@@ -1,5 +1,6 @@
 package com.example.metronomic.activities
 
+import android.app.Activity
 import android.media.AudioAttributes
 import android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION
 import android.media.AudioAttributes.USAGE_MEDIA
@@ -9,6 +10,9 @@ import android.os.Bundle
 import android.widget.EditText
 import android.widget.ImageButton
 import com.example.metronomic.*
+import com.example.metronomic.events.onSubmit
+import com.example.metronomic.events.startListeners
+import com.example.metronomic.timing.changeBPM
 import java.util.*
 import kotlin.concurrent.timerTask
 import kotlin.math.roundToLong
@@ -22,7 +26,13 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        metronomeIsRunning = false
+        val bpmTextBox: EditText = findViewById(R.id.bpmTextBox)
+        bpmTextBox.onSubmit {
+            println("BEEP")
+            changeBPM(bpmTextBox.text.toString().toInt())
+        }
+
+        /*
 
         val audioAttributes: AudioAttributes = AudioAttributes.Builder()
             .setContentType(CONTENT_TYPE_SONIFICATION)
@@ -54,7 +64,7 @@ class MainActivity : AppCompatActivity() {
             } else {
                 startMetronome(soundPool, soundID)
             }
-        }
+        }*/
     }
 
     private fun startMetronome(soundPool: SoundPool, soundID: Int) {
