@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Metronomic</string>
+    <string name="metronome_playback_button">Start and stop metronome</string>
 </resources>
