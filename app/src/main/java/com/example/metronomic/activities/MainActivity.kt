@@ -1,38 +1,27 @@
 package com.example.metronomic.activities
 
-import android.app.Activity
 import android.media.AudioAttributes
 import android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION
 import android.media.AudioAttributes.USAGE_MEDIA
 import android.media.SoundPool
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.ImageButton
+import androidx.lifecycle.lifecycleScope
 import com.example.metronomic.*
-import com.example.metronomic.events.onSubmit
-import com.example.metronomic.events.startListeners
-import com.example.metronomic.timing.changeBPM
-import java.util.*
-import kotlin.concurrent.timerTask
-import kotlin.math.roundToLong
+import com.example.metronomic.timing.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
-    private var metronomeIsRunning: Boolean? = null
-    private var timer: Timer? = null
-    private var bpm: Int = 124
+    private val eventBus = EventBus()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-        val bpmTextBox: EditText = findViewById(R.id.bpmTextBox)
-        bpmTextBox.onSubmit {
-            println("BEEP")
-            changeBPM(bpmTextBox.text.toString().toInt())
-        }
-
-        /*
 
         val audioAttributes: AudioAttributes = AudioAttributes.Builder()
             .setContentType(CONTENT_TYPE_SONIFICATION)
@@ -43,44 +32,35 @@ class MainActivity : AppCompatActivity() {
             .setMaxStreams(1)
             .build()
         val soundID: Int = soundPool.load(this, R.raw.sample_click, 1)
-        soundPool.play(soundID, 1.0f, 1.0f, 0, 0, 1.0f)
 
-        val bpmTextBox: EditText = findViewById(R.id.bpmTextBox)
-        bpmTextBox.setOnFocusChangeListener { _, hasFocus ->
-            run {
-                if (!hasFocus) {
-                    if (metronomeIsRunning == true) {
-                        stopMetronome()
-                        startMetronome(soundPool, soundID)
+        val pulse = Pulse(eventBus, soundPool, soundID)
+
+        val pulseButton: ImageButton = findViewById(R.id.pulseButton)
+        pulseButton.setOnClickListener {
+            if (pulse.pulseIsRunning) {
+                pulse.stopPulse()
+            } else {
+                lifecycleScope.launch {
+                    withContext(Dispatchers.IO) {
+                        pulse.startPulse()
                     }
                 }
             }
         }
 
-        val metronomePlayBackButton: ImageButton = findViewById(R.id.metronomePlaybackButton)
-        metronomePlayBackButton.setOnClickListener {
-            if (metronomeIsRunning == true) {
-                stopMetronome()
-            } else {
-                startMetronome(soundPool, soundID)
-            }
-        }*/
-    }
-
-    private fun startMetronome(soundPool: SoundPool, soundID: Int) {
-        timer = Timer()
-        val timerTask: TimerTask = timerTask {
-            soundPool.play(soundID, 1.0f, 1.0f, 0, 0, 1.0f)
-        }
-
         val bpmTextBox: EditText = findViewById(R.id.bpmTextBox)
-        bpm = Integer.parseInt(bpmTextBox.text.toString())
-        timer?.scheduleAtFixedRate(timerTask, 0, (60000.toDouble() / bpm).roundToLong())
-        metronomeIsRunning = true
+        bpmTextBox.onSubmit {
+            pulse.bpm = bpmTextBox.text.toString().toInt()
+        }
     }
 
-    private fun stopMetronome() {
-        timer?.cancel()
-        metronomeIsRunning = false
+    private fun EditText.onSubmit(func: () -> Unit) {
+        setOnEditorActionListener { _, actionID, _ ->
+            if (actionID == EditorInfo.IME_ACTION_DONE) {
+                func()
+            }
+
+            true
+        }
     }
 }

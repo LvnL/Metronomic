@@ -8,12 +8,11 @@
     tools:context=".activities.MainActivity">
 
     <ImageButton
-        android:id="@+id/metronomePlaybackButton"
+        android:id="@+id/pulseButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="340dp"
         android:backgroundTint="#1e1e1e"
-        android:contentDescription="@string/metronome_playback_button"
         android:soundEffectsEnabled="false"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.498"
