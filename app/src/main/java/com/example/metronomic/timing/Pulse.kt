@@ -2,35 +2,44 @@ package com.example.metronomic.timing
 
 import android.media.SoundPool
 import com.example.metronomic.audio.Playback
+import kotlinx.coroutines.Runnable
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.ScheduledThreadPoolExecutor
+import java.util.concurrent.TimeUnit
+import kotlin.math.roundToLong
 
-class Pulse(eventBus: EventBus, soundPool: SoundPool, soundID: Int) : TimeEmitter(eventBus) {
-    override val playback = Playback(eventBus, soundPool, soundID)
+class Pulse(soundPool: SoundPool, soundID: Int) : TimeEmitter() {
+    override val playback = Playback(soundPool, soundID)
+    override val scheduledThreadPoolExecutor = ScheduledThreadPoolExecutor(4)
     override val type = Type.PULSE
 
     var bpm: Int = 124
-    var pulseIsRunning: Boolean = false
+    var isRunning: Boolean = false
+    val subdivisions: ArrayList<Subdivision> = ArrayList()
 
-    // IOI = Interonset Interval
-    private var ioiMS: Double = 60000.toDouble() / bpm
-    private var ioiMSRounded: Long = ioiMS.toLong()
-    private var roundingDifferenceMS: Double = ioiMS - ioiMSRounded
-    private var roundingDifferenceNS: Double = roundingDifferenceMS * 1000000
-    private var roundingDifferenceNSRounded: Int = roundingDifferenceNS.toInt()
+    private var scheduledFuture: ScheduledFuture<*>? = null
+    private var runnable: Runnable = Runnable {
+        playback.playSound()
+        for (subdivision: Subdivision in subdivisions) {
+            subdivision.run()
+        }
+    }
+    private var interonsetInterval: Long = (60000000000.toDouble() / bpm).roundToLong()
 
     fun stopPulse() {
-        pulseIsRunning = false
+
+        scheduledFuture?.cancel(true)
+        isRunning = false
     }
 
-    suspend fun startPulse() {
-        pulseIsRunning = true
-        while (pulseIsRunning) {
-            click()
-            ioiMS = 60000.toDouble() / bpm
-            ioiMSRounded = ioiMS.toLong()
-            roundingDifferenceMS = ioiMS - ioiMSRounded
-            roundingDifferenceNS = roundingDifferenceMS * 1000000
-            roundingDifferenceNSRounded = roundingDifferenceNS.toInt()
-            Thread.sleep(ioiMSRounded, roundingDifferenceNSRounded)
-        }
+    fun startPulse() {
+        interonsetInterval = (60000000000.toDouble() / bpm).roundToLong()
+        scheduledFuture = scheduledThreadPoolExecutor.scheduleAtFixedRate(
+            runnable,
+            0,
+            interonsetInterval,
+            TimeUnit.NANOSECONDS
+        )
+        isRunning = true
     }
 }

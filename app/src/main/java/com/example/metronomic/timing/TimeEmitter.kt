@@ -1,17 +1,12 @@
 package com.example.metronomic.timing
 
 import com.example.metronomic.audio.Playback
+import java.util.concurrent.ScheduledThreadPoolExecutor
 
-abstract class TimeEmitter(eventBus: EventBus) {
+abstract class TimeEmitter {
     abstract val playback: Playback
+    abstract val scheduledThreadPoolExecutor: ScheduledThreadPoolExecutor
     abstract val type: Type
-    private val eventBus: EventBus
-
-    init {
-        this.eventBus = eventBus
-    }
-
-    suspend fun click() = eventBus.invokeEvent(this)
 }
 
 enum class Type {

@@ -7,18 +7,13 @@ import android.media.SoundPool
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.inputmethod.EditorInfo
+import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
-import androidx.lifecycle.lifecycleScope
 import com.example.metronomic.*
 import com.example.metronomic.timing.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
-    private val eventBus = EventBus()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -29,28 +24,43 @@ class MainActivity : AppCompatActivity() {
             .build()
         val soundPool: SoundPool = SoundPool.Builder()
             .setAudioAttributes(audioAttributes)
-            .setMaxStreams(1)
+            .setMaxStreams(10)
             .build()
         val soundID: Int = soundPool.load(this, R.raw.sample_click, 1)
 
-        val pulse = Pulse(eventBus, soundPool, soundID)
-
-        val pulseButton: ImageButton = findViewById(R.id.pulseButton)
-        pulseButton.setOnClickListener {
-            if (pulse.pulseIsRunning) {
-                pulse.stopPulse()
-            } else {
-                lifecycleScope.launch {
-                    withContext(Dispatchers.IO) {
-                        pulse.startPulse()
-                    }
-                }
-            }
-        }
+        val pulse = Pulse(soundPool, soundID)
 
         val bpmTextBox: EditText = findViewById(R.id.bpmTextBox)
         bpmTextBox.onSubmit {
+            var pulseWasRunning = false
+            if (pulse.isRunning) {
+                pulse.stopPulse()
+                pulseWasRunning = true
+            }
             pulse.bpm = bpmTextBox.text.toString().toInt()
+            if (pulseWasRunning) {
+                pulse.startPulse()
+            }
+        }
+
+        val pulseButton: ImageButton = findViewById(R.id.pulseButton)
+        pulseButton.setOnClickListener {
+            if (pulse.isRunning) {
+                pulse.stopPulse()
+            } else {
+                pulse.startPulse()
+            }
+        }
+
+        val subdivisionButton: Button = findViewById(R.id.subdivisionButton)
+        var subdivision: Subdivision? = null
+        subdivisionButton.setOnClickListener {
+            subdivision = if (subdivision == null) {
+                Subdivision(pulse, subdivisionButton.text.toString().toInt(), soundPool, soundID)
+            } else {
+                subdivision?.disable()
+                null
+            }
         }
     }
 
