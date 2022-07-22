@@ -1,9 +1,6 @@
 package com.example.metronomic.activities
 
-import android.media.AudioAttributes
-import android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION
-import android.media.AudioAttributes.USAGE_MEDIA
-import android.media.SoundPool
+import android.media.*
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.inputmethod.EditorInfo
@@ -11,56 +8,65 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
 import com.example.metronomic.*
-import com.example.metronomic.timing.*
+import com.example.metronomic.timing.Metronome
 
 class MainActivity : AppCompatActivity() {
+    private val audioTrack: AudioTrack
+
+    init {
+        val audioAttributes: AudioAttributes = AudioAttributes.Builder()
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .setUsage(AudioAttributes.USAGE_MEDIA)
+            .build()
+        val audioFormat: AudioFormat = AudioFormat.Builder()
+            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+            .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
+            .setSampleRate(44100)
+            .build()
+        audioTrack = AudioTrack.Builder()
+            .setAudioAttributes(audioAttributes)
+            .setAudioFormat(audioFormat)
+            .setBufferSizeInBytes(AudioTrack.getMinBufferSize(
+                audioFormat.sampleRate,
+                AudioFormat.CHANNEL_OUT_MONO,
+                audioFormat.encoding))
+            .setTransferMode(AudioTrack.MODE_STREAM)
+            .build()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val audioAttributes: AudioAttributes = AudioAttributes.Builder()
-            .setContentType(CONTENT_TYPE_SONIFICATION)
-            .setUsage(USAGE_MEDIA)
-            .build()
-        val soundPool: SoundPool = SoundPool.Builder()
-            .setAudioAttributes(audioAttributes)
-            .setMaxStreams(10)
-            .build()
-        val soundID: Int = soundPool.load(this, R.raw.sample_click, 1)
-
-        val pulse = Pulse(soundPool, soundID)
+        val metronome = Metronome(audioTrack)
 
         val bpmTextBox: EditText = findViewById(R.id.bpmTextBox)
         bpmTextBox.onSubmit {
-            var pulseWasRunning = false
-            if (pulse.isRunning) {
-                pulse.stopPulse()
-                pulseWasRunning = true
-            }
-            pulse.bpm = bpmTextBox.text.toString().toInt()
-            if (pulseWasRunning) {
-                pulse.startPulse()
+            val enteredBPM: Int = bpmTextBox.text.toString().toInt()
+            if (enteredBPM != metronome.bpm) {
+                val metronomeWasRunning: Boolean = metronome.isRunning
+                if(metronomeWasRunning) {
+                    metronome.stop()
+                }
+                metronome.bpm = enteredBPM
+                if (metronomeWasRunning) {
+                    metronome.start()
+                }
             }
         }
 
         val pulseButton: ImageButton = findViewById(R.id.pulseButton)
         pulseButton.setOnClickListener {
-            if (pulse.isRunning) {
-                pulse.stopPulse()
+            if (metronome.isRunning) {
+                metronome.stop()
             } else {
-                pulse.startPulse()
+                metronome.start()
             }
         }
 
         val subdivisionButton: Button = findViewById(R.id.subdivisionButton)
-        var subdivision: Subdivision? = null
         subdivisionButton.setOnClickListener {
-            subdivision = if (subdivision == null) {
-                Subdivision(pulse, subdivisionButton.text.toString().toInt(), soundPool, soundID)
-            } else {
-                subdivision?.disable()
-                null
-            }
+
         }
     }
 
